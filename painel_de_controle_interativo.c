@@ -19,7 +19,7 @@ void vTaskEntrada() // tarefa para entrada de usuarios
                 // Atualiza display caso não tenha alguém usando
                 if (xSemaphoreTake(xMutexDisplay, pdMS_TO_TICKS(100)) == pdTRUE)
                 {
-                    int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+                    int usuarios = MAX - uxSemaphoreGetCount(xSemaphoreUsuarios);
                     atualizar_display(usuarios);
                     xSemaphoreGive(xMutexDisplay);
                 }
@@ -40,12 +40,12 @@ void vTaskEntrada() // tarefa para entrada de usuarios
                     pwm_set_enabled(slice_buzzer, false);
                     desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
                     vTaskDelay(pdMS_TO_TICKS(300));
-                    int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+                    int usuarios = MAX - uxSemaphoreGetCount(xSemaphoreUsuarios);
                     atualizar_display(usuarios);
                     xSemaphoreGive(xMutexDisplay);
                 }
             }
-            int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+            int usuarios = MAX - uxSemaphoreGetCount(xSemaphoreUsuarios);
             alertas_leds(usuarios); // atualiza as cores do led RGB
 
             while (!gpio_get(BOTAO_A))
@@ -66,7 +66,7 @@ void vTaskSaida() // Tenta remover um usuario
             // LIBERA uma vaga (saída de usuário)
             if (xSemaphoreGive(xSemaphoreUsuarios) == pdTRUE)
             {
-                int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+                int usuarios = MAX - uxSemaphoreGetCount(xSemaphoreUsuarios);
                 // Atualiza display, com a segurança do mutex
                 if (xSemaphoreTake(xMutexDisplay, pdMS_TO_TICKS(100)) == pdTRUE)
                 {
@@ -88,7 +88,7 @@ void vTaskSaida() // Tenta remover um usuario
                     ssd1306_draw_string(&ssd, "DESOCUPADA!", 25, 35);
                     ssd1306_send_data(&ssd);
                     vTaskDelay(pdMS_TO_TICKS(600));
-                    int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+                    int usuarios = MAX - uxSemaphoreGetCount(xSemaphoreUsuarios);
                     atualizar_display(usuarios);
                     xSemaphoreGive(xMutexDisplay);
                 }
@@ -112,7 +112,7 @@ void vTaskReset() // tarefa para Reset
             while (xSemaphoreGive(xSemaphoreUsuarios) == pdTRUE)
             {
                 // Continua dando até esvaziar todas as vagas
-                if (uxSemaphoreGetCount(xSemaphoreUsuarios) == MAX_USUARIOS)
+                if (uxSemaphoreGetCount(xSemaphoreUsuarios) == MAX)
                     break;
             }
 
@@ -170,7 +170,7 @@ void atualizar_display(int valor_contagem) // função para atualizar o display
     ssd1306_rect(&ssd, 0, 0, 127, 30, true, false);
 
     // Mostra o número de usuarios ativos
-    snprintf(buffer, sizeof(buffer), "ATIVOS: %d/%d", valor_contagem, MAX_USUARIOS);
+    snprintf(buffer, sizeof(buffer), "ATIVOS: %d/%d", valor_contagem, MAX);
     ssd1306_draw_string(&ssd, buffer, 10, 45);
 
     ssd1306_send_data(&ssd);
@@ -184,19 +184,19 @@ void alertas_leds(int num_usuarios) // função para atualizar a cor do led RGB 
         gpio_put(LED_VERDE, 0);
         gpio_put(LED_AZUL, 1);
     }
-    else if ((num_usuarios > 0) && (num_usuarios <= MAX_USUARIOS - 2)) // caso tenha um total de n-2 usuarios, o led fica verde
+    else if ((num_usuarios > 0) && (num_usuarios <= MAX - 2)) // caso tenha um total de n-2 usuarios, o led fica verde
     {
         gpio_put(LED_AZUL, 0);
         gpio_put(LED_VERMELHO, 0);
         gpio_put(LED_VERDE, 1);
     }
-    else if (num_usuarios == MAX_USUARIOS - 1) // caso tenha apenas uma vaga, o led fica amarelo
+    else if (num_usuarios == MAX - 1) // caso tenha apenas uma vaga, o led fica amarelo
     {
         gpio_put(LED_AZUL, 0);
         gpio_put(LED_VERMELHO, 1);
         gpio_put(LED_VERDE, 1);
     }
-    else if (num_usuarios == MAX_USUARIOS) // caso todas as vagas sejam ocupadas, o led fica vermelho
+    else if (num_usuarios == MAX) // caso todas as vagas sejam ocupadas, o led fica vermelho
     {
         gpio_put(LED_VERDE, 0);
         gpio_put(LED_AZUL, 0);
@@ -320,7 +320,7 @@ void inicializar_display_i2c()
     ssd1306_rect(&ssd, 0, 0, 127, 30, true, false);
 
     // Mostra contagem
-    snprintf(buffer, sizeof(buffer), "ATIVOS: 0/%d", MAX_USUARIOS);
+    snprintf(buffer, sizeof(buffer), "ATIVOS: 0/%d", MAX);
     ssd1306_draw_string(&ssd, buffer, 10, 45);
 
     ssd1306_send_data(&ssd);
@@ -365,7 +365,7 @@ int main()
     desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
 
     // Cria semáforo com 10 vagas TOTALMENTE DISPONÍVEIS
-    xSemaphoreUsuarios = xSemaphoreCreateCounting(MAX_USUARIOS, MAX_USUARIOS); // semaforo de contagem para numero de usuarios
+    xSemaphoreUsuarios = xSemaphoreCreateCounting(MAX, MAX); // semaforo de contagem para numero de usuarios
     xMutexDisplay = xSemaphoreCreateMutex();                                   // Mutex para proteção do display
     xSemaphoreReset = xSemaphoreCreateBinary();                                // Semáforo binário para reset
 

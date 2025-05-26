@@ -54,7 +54,7 @@ PIO pio; // Instância do PIO
 int sm;
 ssd1306_t ssd; // display ssd
 uint slice_buzzer;
-int MAX_USUARIOS = 6;
+int MAX = 6;
 
 static volatile uint32_t ultimo_tempo = 0;
 const uint32_t Debouce_botao_C = 200; // Tempo de debounce em milissegundos
