@@ -9,11 +9,15 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/i2c.h"
+#include "hardware/pio.h"    // Controle do PIO (Programável I/O)
+#include "hardware/clocks.h" // Manipulação de clock
 
 // Bibliotecas para displays e fontes
 #include "lib/ssd1306.h"
 #include "lib/font.h"
-
+// Arquivos específicos do projeto
+#include "pio_wave.pio.h"   // Código PIO
+#include "lib/matriz_5X5.h" // Arrays para exibir na matriz de LED
 
 // Bibliotecas para FreeRTOS
 #include "FreeRTOS.h"
@@ -30,6 +34,10 @@
 #define BUZZER_A 10 // Pino conectado ao buzzer
 #define DEBOUCE 200
 
+// Matriz de LEDs
+#define MATRIZ_PIN 7    // Pino da matriz de LEDs
+#define NUM_PIXELS 25   // Número de pixels na matriz
+#define BRILHO_PADRAO 5 // Brilho padrão
 
 // Definições dos LEDs
 #define LED_VERDE 11
@@ -42,12 +50,14 @@
 #define BOTAO_B 6
 #define BOTAO_C 22
 
+PIO pio; // Instância do PIO
+int sm;
 ssd1306_t ssd; // display ssd
 uint slice_buzzer;
 int MAX_USUARIOS = 6;
 
 static volatile uint32_t ultimo_tempo = 0;
-const uint32_t Debouce_botao_C = 200;  // Tempo de debounce em milissegundos
+const uint32_t Debouce_botao_C = 200; // Tempo de debounce em milissegundos
 
 // Semáforos e mutex
 SemaphoreHandle_t xSemaphoreUsuarios;
@@ -60,12 +70,12 @@ void inicializar_botoes();
 void gpio_callback(uint gpio, uint32_t events);
 void inicializar_pwms_buzzer();
 void inicializar_leds();
+void incializar_matriz_leds();
 void alertas_leds(int num_usuarios);
+void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm);
 // DECLARAÇÃO DAS TAREFAS
 void vEntrada();
 void vSaida();
 void vReset();
-
-
 
 #endif // PAINEL_DE_CONTROLE_INTERATIVO

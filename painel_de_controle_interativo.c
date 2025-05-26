@@ -33,6 +33,7 @@ void vTaskEntrada(void *pvParameters)
 
                 if (xSemaphoreTake(xMutexDisplay, pdMS_TO_TICKS(100)) == pdTRUE)
                 {
+                    desenha_fig(sala_ocupada, BRILHO_PADRAO, pio, sm);
                     ssd1306_fill(&ssd, false);
                     ssd1306_rect(&ssd, 0, 0, 127, 63, true, false);
                     ssd1306_draw_string(&ssd, "LIMITE", 40, 20);
@@ -41,6 +42,7 @@ void vTaskEntrada(void *pvParameters)
                     pwm_set_enabled(slice_buzzer, true);
                     vTaskDelay(pdMS_TO_TICKS(200));
                     pwm_set_enabled(slice_buzzer, false);
+                    desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
                     vTaskDelay(pdMS_TO_TICKS(300));
                     UBaseType_t usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
                     atualizar_display(usuarios);
@@ -108,6 +110,7 @@ void vTaskReset(void *pvParameters)
                 atualizar_display(0); // Mostra 0 usuários
                 xSemaphoreGive(xMutexDisplay);
             }
+            desenha_fig(alerta_reset, BRILHO_PADRAO, pio, sm);
             alertas_leds(0);
             pwm_set_enabled(slice_buzzer, true);
             vTaskDelay(pdMS_TO_TICKS(150));
@@ -116,6 +119,7 @@ void vTaskReset(void *pvParameters)
             pwm_set_enabled(slice_buzzer, true);
             vTaskDelay(pdMS_TO_TICKS(150));
             pwm_set_enabled(slice_buzzer, false);
+            desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
         }
     }
 }
@@ -160,6 +164,105 @@ void atualizar_display(int valor_contagem)
     ssd1306_draw_string(&ssd, buffer, 10, 45);
 
     ssd1306_send_data(&ssd);
+}
+
+void alertas_leds(int num_usuarios)
+{
+    if (num_usuarios == 0)
+    {
+        gpio_put(LED_VERMELHO, 0);
+        gpio_put(LED_VERDE, 0);
+        gpio_put(LED_AZUL, 1);
+    }
+    else if ((num_usuarios > 0) && (num_usuarios <= MAX_USUARIOS - 2))
+    {
+        gpio_put(LED_AZUL, 0);
+        gpio_put(LED_VERMELHO, 0);
+        gpio_put(LED_VERDE, 1);
+    }
+    else if (num_usuarios == MAX_USUARIOS - 1)
+    {
+        gpio_put(LED_AZUL, 0);
+        gpio_put(LED_VERMELHO, 1);
+        gpio_put(LED_VERDE, 1);
+    }
+    else if (num_usuarios == MAX_USUARIOS)
+    {
+        gpio_put(LED_VERDE, 0);
+        gpio_put(LED_AZUL, 0);
+        gpio_put(LED_VERMELHO, 1);
+    }
+}
+
+void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm) // FUNÇÃO PARA DESENHAR O SEMAFORO NA MATRIZ
+{
+    uint32_t pixel = 0;
+    uint8_t r, g, b;
+
+    for (int i = 24; i > 19; i--) // Linha 1
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
+
+    for (int i = 15; i < 20; i++) // Linha 2
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (b << 16) | (r << 8) | g;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
+
+    for (int i = 14; i > 9; i--) // Linha 3
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
+
+    for (int i = 5; i < 10; i++) // Linha 4
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
+
+    for (int i = 4; i > -1; i--) // Linha 5
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
+}
+
+void inicializar_matriz_leds() // FUNÇÃO PARA CONFIGURAR O PIO PARA USAR NA MATRIZ DE LEDS
+{
+    bool clock_setado = set_sys_clock_khz(133000, false);
+    pio = pio0;
+    sm = pio_claim_unused_sm(pio, true);
+    uint offset = pio_add_program(pio, &Matriz_5x5_program);
+    Matriz_5x5_program_init(pio, sm, offset, MATRIZ_PIN);
 }
 
 void inicializar_botoes()
@@ -223,7 +326,6 @@ void inicializar_pwms_buzzer()
     pwm_set_enabled(slice_buzzer, false);
 }
 
-
 void inicializar_leds()
 {
     // Inicializa o pino do LED vermelho
@@ -242,34 +344,6 @@ void inicializar_leds()
     gpio_put(LED_VERDE, 0); // LIGA o LED inicialmente
 }
 
-void alertas_leds(int num_usuarios)
-{
-    if (num_usuarios == 0)
-    {
-        gpio_put(LED_VERMELHO, 0);
-        gpio_put(LED_VERDE, 0);
-        gpio_put(LED_AZUL, 1);
-    }
-    else if ((num_usuarios > 0) && (num_usuarios <= MAX_USUARIOS - 2))
-    {
-        gpio_put(LED_AZUL, 0);
-        gpio_put(LED_VERMELHO, 0);
-        gpio_put(LED_VERDE, 1);
-    }
-    else if (num_usuarios == MAX_USUARIOS - 1)
-    {
-        gpio_put(LED_AZUL, 0);
-        gpio_put(LED_VERMELHO, 1);
-        gpio_put(LED_VERDE, 1);
-    }
-    else if (num_usuarios == MAX_USUARIOS)
-    {
-        gpio_put(LED_VERDE, 0);
-        gpio_put(LED_AZUL, 0);
-        gpio_put(LED_VERMELHO, 1);
-    }
-}
-
 int main()
 {
     // Inicializa hardware
@@ -277,6 +351,8 @@ int main()
     inicializar_botoes();
     inicializar_pwms_buzzer();
     inicializar_leds();
+    inicializar_matriz_leds();
+    desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
     // Cria semáforo com 10 vagas TOTALMENTE DISPONÍVEIS
     xSemaphoreUsuarios = xSemaphoreCreateCounting(MAX_USUARIOS, MAX_USUARIOS);
     xMutexDisplay = xSemaphoreCreateMutex();
