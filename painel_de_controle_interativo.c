@@ -19,7 +19,7 @@ void vTaskEntrada() // tarefa para entrada de usuarios
                 // Atualiza display caso não tenha alguém usando
                 if (xSemaphoreTake(xMutexDisplay, pdMS_TO_TICKS(100)) == pdTRUE)
                 {
-                    UBaseType_t usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+                    int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
                     atualizar_display(usuarios);
                     xSemaphoreGive(xMutexDisplay);
                 }
@@ -40,12 +40,12 @@ void vTaskEntrada() // tarefa para entrada de usuarios
                     pwm_set_enabled(slice_buzzer, false);
                     desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
                     vTaskDelay(pdMS_TO_TICKS(300));
-                    UBaseType_t usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+                    int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
                     atualizar_display(usuarios);
                     xSemaphoreGive(xMutexDisplay);
                 }
             }
-            UBaseType_t usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+            int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
             alertas_leds(usuarios); // atualiza as cores do led RGB
 
             while (!gpio_get(BOTAO_A))
@@ -66,7 +66,7 @@ void vTaskSaida() // Tenta remover um usuario
             // LIBERA uma vaga (saída de usuário)
             if (xSemaphoreGive(xSemaphoreUsuarios) == pdTRUE)
             {
-                UBaseType_t usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+                int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
                 // Atualiza display, com a segurança do mutex
                 if (xSemaphoreTake(xMutexDisplay, pdMS_TO_TICKS(100)) == pdTRUE)
                 {
@@ -88,7 +88,7 @@ void vTaskSaida() // Tenta remover um usuario
                     ssd1306_draw_string(&ssd, "DESOCUPADA!", 25, 35);
                     ssd1306_send_data(&ssd);
                     vTaskDelay(pdMS_TO_TICKS(600));
-                    UBaseType_t usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+                    int usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
                     atualizar_display(usuarios);
                     xSemaphoreGive(xMutexDisplay);
                 }
