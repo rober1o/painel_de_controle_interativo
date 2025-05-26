@@ -14,7 +14,7 @@ O projeto tem como finalidade criar um painel de controle interativo para uma bi
 ## Funcionalidade
 
 Sistema foi projetado para operar com três tarefas principais: uma responsável pela entrada de usuários, outra pela saída, e uma terceira dedicada ao reset do sistema.
-Ao ser inicializado, o sistema exibirá um painel no display OLED contendo o número de usuários atualmente ativos na biblioteca, começando com o valor inicial de zero. Simultaneamente, o LED RGB será aceso na cor azul, indicando que a biblioteca encontra-se completamente desocupa-da.
+Ao ser inicializado, o sistema exibirá um painel no display OLED contendo o número de usuários atualmente ativos na biblioteca, começando com o valor inicial de zero. Simultaneamente, o LED RGB será aceso na cor azul, indicando que a biblioteca encontra-se completamente desocupada.
 
 
 A interação do usuário com o sistema é realizada por meio de três botões:
