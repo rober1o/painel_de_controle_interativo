@@ -1,22 +1,18 @@
 #include "painel_de_controle_interativo.h"
 
 /*******************************************************
-                      VARIÁVEIS GLOBAIS
-*******************************************************/
-
-/*******************************************************
                       TAREFAS
 *******************************************************/
 
-void vTaskEntrada(void *pvParameters)
+void vTaskEntrada() // tarefa para entrada de usuarios
 {
     while (true)
     {
         if (!gpio_get(BOTAO_A)) // verifica se o botão foi pressionado
         {
-            vTaskDelay(pdMS_TO_TICKS(DEBOUCE)); // Debounce de 20ms
+            vTaskDelay(pdMS_TO_TICKS(DEBOUCE)); // Debounce
 
-            // Tenta consuir uma vaga (entrada de usuário)
+            // Tenta consumir uma vaga (entrada de usuário)
             if (xSemaphoreTake(xSemaphoreUsuarios, 0) == pdTRUE)
             {
 
@@ -30,16 +26,16 @@ void vTaskEntrada(void *pvParameters)
             }
             else // caso não tenha mais vagas para consumir, informa que o limete foi atingido
             {
-
+                // Atualiza display caso não tenha alguém usando
                 if (xSemaphoreTake(xMutexDisplay, pdMS_TO_TICKS(100)) == pdTRUE)
                 {
-                    desenha_fig(sala_ocupada, BRILHO_PADRAO, pio, sm);
+                    desenha_fig(sala_ocupada, BRILHO_PADRAO, pio, sm); // aparece um X na matrix de leds
                     ssd1306_fill(&ssd, false);
                     ssd1306_rect(&ssd, 0, 0, 127, 63, true, false);
                     ssd1306_draw_string(&ssd, "LIMITE", 40, 20);
-                    ssd1306_draw_string(&ssd, "MAXIMO!", 40, 35);
+                    ssd1306_draw_string(&ssd, "ATINGIDO!", 30, 35);
                     ssd1306_send_data(&ssd);
-                    pwm_set_enabled(slice_buzzer, true);
+                    pwm_set_enabled(slice_buzzer, true); // toca um beep no buzzer
                     vTaskDelay(pdMS_TO_TICKS(200));
                     pwm_set_enabled(slice_buzzer, false);
                     desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
@@ -50,7 +46,7 @@ void vTaskEntrada(void *pvParameters)
                 }
             }
             UBaseType_t usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
-            alertas_leds(usuarios);
+            alertas_leds(usuarios); // atualiza as cores do led RGB
 
             while (!gpio_get(BOTAO_A))
                 ; // Espera soltar para não acontecer varias leituras se eu segurar o botão
@@ -59,7 +55,7 @@ void vTaskEntrada(void *pvParameters)
     }
 }
 
-void vTaskSaida(void *pvParameters)
+void vTaskSaida() // Tenta remover um usuario
 {
     while (true)
     {
@@ -71,7 +67,7 @@ void vTaskSaida(void *pvParameters)
             if (xSemaphoreGive(xSemaphoreUsuarios) == pdTRUE)
             {
                 UBaseType_t usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
-                // Atualiza display
+                // Atualiza display, com a segurança do mutex
                 if (xSemaphoreTake(xMutexDisplay, pdMS_TO_TICKS(100)) == pdTRUE)
                 {
 
@@ -79,7 +75,23 @@ void vTaskSaida(void *pvParameters)
                     xSemaphoreGive(xMutexDisplay);
                 }
 
-                alertas_leds(usuarios);
+                alertas_leds(usuarios); // Atualiza a cor do led RGB
+            }
+            else // caso não tenha mais vagas para retirar, informa que está vazia
+            {
+                // Atualiza display caso não tenha alguém usando
+                if (xSemaphoreTake(xMutexDisplay, pdMS_TO_TICKS(100)) == pdTRUE)
+                {
+                    ssd1306_fill(&ssd, false);
+                    ssd1306_rect(&ssd, 0, 0, 127, 63, true, false);
+                    ssd1306_draw_string(&ssd, "BIBLIOTECA", 25, 20);
+                    ssd1306_draw_string(&ssd, "DESOCUPADA!", 25, 35);
+                    ssd1306_send_data(&ssd);
+                    vTaskDelay(pdMS_TO_TICKS(600));
+                    UBaseType_t usuarios = MAX_USUARIOS - uxSemaphoreGetCount(xSemaphoreUsuarios);
+                    atualizar_display(usuarios);
+                    xSemaphoreGive(xMutexDisplay);
+                }
             }
 
             while (!gpio_get(BOTAO_B))
@@ -89,7 +101,7 @@ void vTaskSaida(void *pvParameters)
     vTaskDelay(pdMS_TO_TICKS(50));
 }
 
-void vTaskReset(void *pvParameters)
+void vTaskReset() // tarefa para Reset
 {
     while (true)
     {
@@ -104,15 +116,15 @@ void vTaskReset(void *pvParameters)
                     break;
             }
 
-            // Atualiza display
+            // Atualiza display, caso ninguém esteja usando
             if (xSemaphoreTake(xMutexDisplay, pdMS_TO_TICKS(100)) == pdTRUE)
             {
                 atualizar_display(0); // Mostra 0 usuários
                 xSemaphoreGive(xMutexDisplay);
             }
-            desenha_fig(alerta_reset, BRILHO_PADRAO, pio, sm);
+            desenha_fig(alerta_reset, BRILHO_PADRAO, pio, sm); // desenha uma exclamação na matriz
             alertas_leds(0);
-            pwm_set_enabled(slice_buzzer, true);
+            pwm_set_enabled(slice_buzzer, true); // toca o beep 2x no buzzer
             vTaskDelay(pdMS_TO_TICKS(150));
             pwm_set_enabled(slice_buzzer, false);
             vTaskDelay(pdMS_TO_TICKS(50));
@@ -130,11 +142,11 @@ void vTaskReset(void *pvParameters)
 // ISR do botão
 void gpio_callback(uint gpio, uint32_t events)
 {
-    uint32_t tempo = time_us_32() / 1000; // Converte para milissegundos
+    uint32_t tempo = time_us_32() / 1000; // pega o tempo atual
 
     // Verifica se o tempo desde a última interrupção é maior que o debounce
     if ((tempo - ultimo_tempo) >= Debouce_botao_C)
-    {
+    { // libera o semaforo binario para uso
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xSemaphoreGiveFromISR(xSemaphoreReset, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -146,12 +158,10 @@ void gpio_callback(uint gpio, uint32_t events)
                       FUNÇÕES AUXILIARES
 *******************************************************/
 
-void atualizar_display(int valor_contagem)
+void atualizar_display(int valor_contagem) // função para atualizar o display
 {
     char buffer[20];
     ssd1306_fill(&ssd, false);
-
-    // Desenha borda de 1 pixel em toda a tela
     ssd1306_rect(&ssd, 0, 0, 127, 63, true, false);
     snprintf(buffer, sizeof(buffer), "CONTROLE DA");
     ssd1306_draw_string(&ssd, buffer, 20, 8);
@@ -159,34 +169,34 @@ void atualizar_display(int valor_contagem)
     ssd1306_draw_string(&ssd, buffer, 25, 20);
     ssd1306_rect(&ssd, 0, 0, 127, 30, true, false);
 
-    // Mostra contagem
+    // Mostra o número de usuarios ativos
     snprintf(buffer, sizeof(buffer), "ATIVOS: %d/%d", valor_contagem, MAX_USUARIOS);
     ssd1306_draw_string(&ssd, buffer, 10, 45);
 
     ssd1306_send_data(&ssd);
 }
 
-void alertas_leds(int num_usuarios)
+void alertas_leds(int num_usuarios) // função para atualizar a cor do led RGB de acordo a quantidade de usuarios
 {
-    if (num_usuarios == 0)
+    if (num_usuarios == 0) // caso não tenha usuarios, p led fica azul
     {
         gpio_put(LED_VERMELHO, 0);
         gpio_put(LED_VERDE, 0);
         gpio_put(LED_AZUL, 1);
     }
-    else if ((num_usuarios > 0) && (num_usuarios <= MAX_USUARIOS - 2))
+    else if ((num_usuarios > 0) && (num_usuarios <= MAX_USUARIOS - 2)) // caso tenha um total de n-2 usuarios, o led fica verde
     {
         gpio_put(LED_AZUL, 0);
         gpio_put(LED_VERMELHO, 0);
         gpio_put(LED_VERDE, 1);
     }
-    else if (num_usuarios == MAX_USUARIOS - 1)
+    else if (num_usuarios == MAX_USUARIOS - 1) // caso tenha apenas uma vaga, o led fica amarelo
     {
         gpio_put(LED_AZUL, 0);
         gpio_put(LED_VERMELHO, 1);
         gpio_put(LED_VERDE, 1);
     }
-    else if (num_usuarios == MAX_USUARIOS)
+    else if (num_usuarios == MAX_USUARIOS) // caso todas as vagas sejam ocupadas, o led fica vermelho
     {
         gpio_put(LED_VERDE, 0);
         gpio_put(LED_AZUL, 0);
@@ -265,7 +275,7 @@ void inicializar_matriz_leds() // FUNÇÃO PARA CONFIGURAR O PIO PARA USAR NA MA
     Matriz_5x5_program_init(pio, sm, offset, MATRIZ_PIN);
 }
 
-void inicializar_botoes()
+void inicializar_botoes() // função para inicializar os botões
 {
     // Configuração do Botão A (Entrada)
     gpio_init(BOTAO_A);
@@ -316,7 +326,7 @@ void inicializar_display_i2c()
     ssd1306_send_data(&ssd);
 }
 
-void inicializar_pwms_buzzer()
+void inicializar_pwms_buzzer() // função para inicializar o buzzer
 {
     // Buzzer A - grave audível (~2 kHz)
     gpio_set_function(BUZZER_A, GPIO_FUNC_PWM);
@@ -326,7 +336,7 @@ void inicializar_pwms_buzzer()
     pwm_set_enabled(slice_buzzer, false);
 }
 
-void inicializar_leds()
+void inicializar_leds() // função para inicializar o led RGB
 {
     // Inicializa o pino do LED vermelho
     gpio_init(LED_VERMELHO);
@@ -336,12 +346,12 @@ void inicializar_leds()
     // Inicializa o pino do LED azul
     gpio_init(LED_AZUL);
     gpio_set_dir(LED_AZUL, GPIO_OUT);
-    gpio_put(LED_AZUL, 1); // Desliga o LED inicialmente
+    gpio_put(LED_AZUL, 1); // Liga o LED inicialmente
 
     // Inicializa o pino do LED azul
     gpio_init(LED_VERDE);
     gpio_set_dir(LED_VERDE, GPIO_OUT);
-    gpio_put(LED_VERDE, 0); // LIGA o LED inicialmente
+    gpio_put(LED_VERDE, 0); // desliga o LED inicialmente
 }
 
 int main()
@@ -353,17 +363,16 @@ int main()
     inicializar_leds();
     inicializar_matriz_leds();
     desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
+
     // Cria semáforo com 10 vagas TOTALMENTE DISPONÍVEIS
-    xSemaphoreUsuarios = xSemaphoreCreateCounting(MAX_USUARIOS, MAX_USUARIOS);
-    xMutexDisplay = xSemaphoreCreateMutex();
-    xSemaphoreReset = xSemaphoreCreateBinary(); // Semáforo binário para reset
-    // Cria tarefas
+    xSemaphoreUsuarios = xSemaphoreCreateCounting(MAX_USUARIOS, MAX_USUARIOS); // semaforo de contagem para numero de usuarios
+    xMutexDisplay = xSemaphoreCreateMutex();                                   // Mutex para proteção do display
+    xSemaphoreReset = xSemaphoreCreateBinary();                                // Semáforo binário para reset
+
+    // Cria as três tarefas
     xTaskCreate(vTaskEntrada, "Entrada", configMINIMAL_STACK_SIZE + 128, NULL, 1, NULL);
     xTaskCreate(vTaskSaida, "Saida", configMINIMAL_STACK_SIZE + 128, NULL, 1, NULL);
     xTaskCreate(vTaskReset, "Reset", configMINIMAL_STACK_SIZE + 128, NULL, 1, NULL);
 
     vTaskStartScheduler();
-
-    while (1)
-        ;
 }

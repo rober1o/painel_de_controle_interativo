@@ -54,7 +54,7 @@ PIO pio; // Instância do PIO
 int sm;
 ssd1306_t ssd; // display ssd
 uint slice_buzzer;
-int MAX_USUARIOS = 6;
+int MAX_USUARIOS = 5;
 
 static volatile uint32_t ultimo_tempo = 0;
 const uint32_t Debouce_botao_C = 200; // Tempo de debounce em milissegundos
@@ -64,18 +64,28 @@ SemaphoreHandle_t xSemaphoreUsuarios;
 SemaphoreHandle_t xSemaphoreReset;
 SemaphoreHandle_t xMutexDisplay;
 
-// DECLARAÇÃO FUNÇÕES DE INICALIZAÇÃO E CALLBACK
-void atualizar_display(int valor_contagem);
+// DECLARAÇÃO FUNÇÕES DE INICALIZAÇÃO
 void inicializar_botoes();
-void gpio_callback(uint gpio, uint32_t events);
 void inicializar_pwms_buzzer();
 void inicializar_leds();
 void incializar_matriz_leds();
+void inicializar_display_i2c();
+
+
+
+
+//FUNÇÕES AUXILIARES
+void atualizar_display(int valor_contagem);
 void alertas_leds(int num_usuarios);
 void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm);
+
+
+//FUNÇÃO CALLBACK
+void gpio_callback(uint gpio, uint32_t events);
+
 // DECLARAÇÃO DAS TAREFAS
-void vEntrada();
-void vSaida();
-void vReset();
+void vTaskEntrada();
+void vTaskSaida();
+void vTaskReset();
 
 #endif // PAINEL_DE_CONTROLE_INTERATIVO
