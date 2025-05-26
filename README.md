@@ -54,4 +54,4 @@ Sinais Sonoros — Buzzer:
 
 ## Demonstração
 
-<!-- TODO: adicionar link do vídeo -->
+Vídeo demonstrando as funcionalidades da solução implementada: [Demonstração](https://youtu.be/oydrCpP6KTw)
